@@ -6,126 +6,61 @@
 //-----------------------------------------------------------------------
 
 using System;
-using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
-using System.Threading.Tasks;
+
 using Akka.Actor;
-using Akka.Persistence.Journal;
-using Akka.Serialization;
 using Akka.Util.Internal;
-using StackExchange.Redis;
 
 namespace Akka.Persistence.Redis.Journal
 {
-    public class RedisJournal : AsyncWriteJournal
+    using System.Reflection;
+
+    using Akka.Configuration;
+    using Akka.Routing;
+
+    public class RedisJournal : ReceiveActor
     {
-        private readonly RedisSettings _settings;
-        private Lazy<Serializer> _serializer;
-        private Lazy<IDatabase> _database;
-        private ActorSystem _system;
+        private readonly RedisSettings _settings = RedisPersistence.Get(Context.System).JournalSettings;
+
+        private IActorRef workers;
 
         public RedisJournal()
         {
-            _settings = RedisPersistence.Get(Context.System).JournalSettings;
-        }
-
-        protected override void PreStart()
-        {
-            base.PreStart();
-            _system = Context.System;
-            _database = new Lazy<IDatabase>(() =>
+            var extension = Persistence.Instance.Apply(Context.System);
+            if (extension == null)
             {
-                var redisConnection = ConnectionMultiplexer.Connect(_settings.ConfigurationString);
-                return redisConnection.GetDatabase(_settings.Database);
-            });
-            _serializer = new Lazy<Serializer>(() => _system.Serialization.FindSerializerForType(typeof(JournalEntry)));
-        }
-
-        public override async Task ReplayMessagesAsync(
-            IActorContext context,
-            string persistenceId,
-            long fromSequenceNr,
-            long toSequenceNr,
-            long max,
-            Action<IPersistentRepresentation> recoveryCallback)
-        {
-            RedisValue[] journals = await _database.Value.SortedSetRangeByScoreAsync(GetJournalKey(persistenceId), fromSequenceNr, toSequenceNr, skip: 0L, take: max);
-
-            foreach (var journal in journals)
-            {
-                recoveryCallback(ToPersistenceRepresentation(_serializer.Value.FromBinary<JournalEntry>(journal), context.Sender));
+                throw new ArgumentException(
+                          "Couldn't initialize SyncWriteJournal instance, because associated Persistence extension has not been used in current actor system context.");
             }
-        }
 
-        public override async Task<long> ReadHighestSequenceNrAsync(string persistenceId, long fromSequenceNr)
-        {
-            var highestSequenceNr = await _database.Value.StringGetAsync(GetHighestSequenceNrKey(persistenceId));
-            return highestSequenceNr.IsNull ? 0L : (long)highestSequenceNr;
-        }
+            // dirty trick just for concept proof. Should be removed.
+            // Config config = extension.ConfigFor(Self);
+            Config config =
+                (Config)typeof(PersistenceExtension).GetMethod("ConfigFor", BindingFlags.Instance | BindingFlags.NonPublic)
+                    .Invoke(extension, new []{ Self });
 
-        protected override async Task DeleteMessagesToAsync(string persistenceId, long toSequenceNr)
-        {
-            await _database.Value.SortedSetRemoveRangeByScoreAsync(GetJournalKey(persistenceId), -1, toSequenceNr);
-        }
+            this.workers =
+                Context.ActorOf(
+                    Props.Create(() => new RedisJournalWorker(config))
+                        .WithRouter(new ConsistentHashingPool(_settings.MaxParallelism)),
+                    "workers");
 
-        protected override async Task<IImmutableList<Exception>> WriteMessagesAsync(IEnumerable<AtomicWrite> messages)
-        {
-            var messagesList = messages.ToList();
-            var groupedTasks = messagesList.GroupBy(x => x.PersistenceId).ToDictionary(g => g.Key, async g =>
-            {
-                var persistentMessages = g.SelectMany(aw => (IImmutableList<IPersistentRepresentation>)aw.Payload).ToList();
-
-                var persistenceId = g.Key;
-                var highSequenceId = persistentMessages.Max(c => c.SequenceNr);
-
-                var transaction = _database.Value.CreateTransaction();
-
-                foreach (var write in persistentMessages)
-                {
-                    transaction.SortedSetAddAsync(GetJournalKey(write.PersistenceId), _serializer.Value.ToBinary(ToJournalEntry(write)), write.SequenceNr);
-                }
-
-                transaction.StringSetAsync(GetHighestSequenceNrKey(persistenceId), highSequenceId);
-
-                if (!await transaction.ExecuteAsync())
-                {
-                    throw new Exception($"{nameof(WriteMessagesAsync)}: failed to write {typeof(JournalEntry).Name} to redis");
-                }
-            });
-
-            return await Task<IImmutableList<Exception>>.Factory.ContinueWhenAll(
-                    groupedTasks.Values.ToArray(),
-                    tasks => messagesList.Select(
-                        m =>
+            this.Receive<WriteMessages>(
+                m =>
+                    {
+                        var first = m.Messages.FirstOrDefault() as AtomicWrite;
+                        if (first == null)
                         {
-                            var task = groupedTasks[m.PersistenceId];
-                            return task.IsFaulted ? TryUnwrapException(task.Exception) : null;
-                        }).ToImmutableList());
-        }
+                            return;
+                        }
 
-        private RedisKey GetJournalKey(string persistenceId) => $"{_settings.KeyPrefix}:{persistenceId}";
-
-        private RedisKey GetHighestSequenceNrKey(string persistenceId)
-        {
-            return $"{GetJournalKey(persistenceId)}.highestSequenceNr";
-        }
-
-        private JournalEntry ToJournalEntry(IPersistentRepresentation message)
-        {
-            return new JournalEntry
-            {
-                PersistenceId = message.PersistenceId,
-                SequenceNr = message.SequenceNr,
-                IsDeleted = message.IsDeleted,
-                Payload = message.Payload,
-                Manifest = message.Manifest
-            };
-        }
-
-        private Persistent ToPersistenceRepresentation(JournalEntry entry, IActorRef sender)
-        {
-            return new Persistent(entry.Payload, entry.SequenceNr, entry.PersistenceId, entry.Manifest, entry.IsDeleted, sender);
+                        this.workers.Forward(new ConsistentHashableEnvelope(m, first.PersistenceId));
+                    });
+            this.Receive<ReplayMessages>(m => this.workers.Forward(new ConsistentHashableEnvelope(m, m.PersistenceId)));
+            this.Receive<ReadHighestSequenceNr>(
+                m => this.workers.Forward(new ConsistentHashableEnvelope(m, m.PersistenceId)));
+            this.Receive<DeleteMessagesTo>(
+                m => this.workers.Forward(new ConsistentHashableEnvelope(m, m.PersistenceId)));
         }
     }
 }

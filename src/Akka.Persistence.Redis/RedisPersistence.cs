@@ -13,11 +13,12 @@ namespace Akka.Persistence.Redis
 {
     public class RedisSettings
     {
-        public RedisSettings(string configurationString, string keyPrefix, int database)
+        public RedisSettings(string configurationString, string keyPrefix, int database, int maxParallelism)
         {
             ConfigurationString = configurationString;
             KeyPrefix = keyPrefix;
             Database = database;
+            MaxParallelism = maxParallelism;
         }
 
         public string ConfigurationString { get; }
@@ -25,6 +26,8 @@ namespace Akka.Persistence.Redis
         public string KeyPrefix { get; }
 
         public int Database { get; }
+
+        public int MaxParallelism { get; }
 
         public static RedisSettings Create(Config config)
         {
@@ -34,7 +37,8 @@ namespace Akka.Persistence.Redis
             return new RedisSettings(
                 configurationString: config.GetString("configuration-string"),
                 keyPrefix: config.GetString("key-prefix"),
-                database: config.GetInt("database"));
+                database: config.GetInt("database"),
+                maxParallelism: config.GetInt("max-parallelism", 8));
         }
     }
 
