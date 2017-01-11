@@ -39,10 +39,18 @@ namespace Akka.Persistence.Redis.Journal
                 (Config)typeof(PersistenceExtension).GetMethod("ConfigFor", BindingFlags.Instance | BindingFlags.NonPublic)
                     .Invoke(extension, new []{ Self });
 
+            var props = Props.Create(() => new RedisJournalWorker(config))
+                .WithRouter(new ConsistentHashingPool(this._settings.MaxParallelism));
+
+            var dispatcher = config.GetString("plugin-dispatcher");
+            if (!string.IsNullOrWhiteSpace(dispatcher))
+            {
+                props = props.WithDispatcher(dispatcher);
+            }
+
             this.workers =
                 Context.ActorOf(
-                    Props.Create(() => new RedisJournalWorker(config))
-                        .WithRouter(new ConsistentHashingPool(_settings.MaxParallelism)),
+                    props,
                     "workers");
 
             this.Receive<WriteMessages>(

@@ -36,25 +36,20 @@
     <DocumentationFile>bin\Release\Akka.Persistence.Redis.Tests.XML</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Akka, Version=1.1.2.29, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Akka.1.1.2\lib\net45\Akka.dll</HintPath>
-      <Private>True</Private>
+    <Reference Include="Akka">
+      <HintPath>..\Packages\Akka.1.1.2.309-beta\lib\net45\Akka.dll</HintPath>
     </Reference>
-    <Reference Include="Akka.Persistence, Version=1.1.2.30, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Akka.Persistence.1.1.2.30-beta\lib\net45\Akka.Persistence.dll</HintPath>
-      <Private>True</Private>
+    <Reference Include="Akka.Persistence">
+      <HintPath>..\Packages\Akka.Persistence.1.1.2.309-beta\lib\net45\Akka.Persistence.dll</HintPath>
     </Reference>
-    <Reference Include="Akka.Persistence.TestKit, Version=1.1.2.30, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Akka.Persistence.TestKit.1.1.2.30-beta\lib\net45\Akka.Persistence.TestKit.dll</HintPath>
-      <Private>True</Private>
+    <Reference Include="Akka.Persistence.TestKit">
+      <HintPath>..\Packages\Akka.Persistence.TestKit.1.1.2.309-beta\lib\net45\Akka.Persistence.TestKit.dll</HintPath>
     </Reference>
-    <Reference Include="Akka.TestKit, Version=1.1.2.29, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Akka.TestKit.1.1.2\lib\net45\Akka.TestKit.dll</HintPath>
-      <Private>True</Private>
+    <Reference Include="Akka.TestKit">
+      <HintPath>..\Packages\Akka.TestKit.1.1.2.309-beta\lib\net45\Akka.TestKit.dll</HintPath>
     </Reference>
-    <Reference Include="Akka.TestKit.Xunit2, Version=1.1.2.29, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Akka.TestKit.Xunit2.1.1.2\lib\net45\Akka.TestKit.Xunit2.dll</HintPath>
-      <Private>True</Private>
+    <Reference Include="Akka.TestKit.Xunit2">
+      <HintPath>..\Packages\Akka.TestKit.Xunit2.1.1.2.309-beta\lib\net45\Akka.TestKit.Xunit2.dll</HintPath>
     </Reference>
     <Reference Include="FluentAssertions, Version=4.12.0.0, Culture=neutral, PublicKeyToken=33f2691a05b67b6a, processorArchitecture=MSIL">
       <HintPath>..\packages\FluentAssertions.4.12.0\lib\net45\FluentAssertions.dll</HintPath>

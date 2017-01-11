@@ -38,7 +38,7 @@ namespace Akka.Persistence.Redis
                 configurationString: config.GetString("configuration-string"),
                 keyPrefix: config.GetString("key-prefix"),
                 database: config.GetInt("database"),
-                maxParallelism: config.GetInt("max-parallelism", 8));
+                maxParallelism: config.GetInt("max-parallelism", 4));
         }
     }
 

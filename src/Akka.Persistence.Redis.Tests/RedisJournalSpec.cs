@@ -33,7 +33,10 @@ namespace Akka.Persistence.Redis.Tests
                         redis {
                             class = ""Akka.Persistence.Redis.Journal.RedisJournal, Akka.Persistence.Redis""
                             configuration-string = """ + connectionString + @"""
-                            plugin-dispatcher = ""akka.actor.default-dispatcher""
+                            plugin-dispatcher = ""akka.persistence.journal.redis.dispatcher""
+                            dispatcher {
+                                type = PinnedDispatcher
+                            }
                             database = """ + database + @"""
                             key-prefix = ""akka:persistence:journal""
                         }

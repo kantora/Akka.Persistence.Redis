@@ -33,13 +33,11 @@
     <DocumentationFile>bin\Release\Akka.Persistence.Redis.XML</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Akka, Version=1.1.2.29, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Akka.1.1.2\lib\net45\Akka.dll</HintPath>
-      <Private>True</Private>
+    <Reference Include="Akka">
+      <HintPath>..\Packages\Akka.1.1.2.309-beta\lib\net45\Akka.dll</HintPath>
     </Reference>
-    <Reference Include="Akka.Persistence, Version=1.1.2.30, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Akka.Persistence.1.1.2.30-beta\lib\net45\Akka.Persistence.dll</HintPath>
-      <Private>True</Private>
+    <Reference Include="Akka.Persistence">
+      <HintPath>..\Packages\Akka.Persistence.1.1.2.309-beta\lib\net45\Akka.Persistence.dll</HintPath>
     </Reference>
     <Reference Include="Google.ProtocolBuffers">
       <HintPath>..\packages\Google.ProtocolBuffers.2.4.1.555\lib\net40\Google.ProtocolBuffers.dll</HintPath>

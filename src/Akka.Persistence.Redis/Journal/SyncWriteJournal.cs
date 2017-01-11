@@ -79,7 +79,7 @@ namespace Akka.Persistence.Redis.Journal
             _replayFilterMaxOldWriters = config.GetInt("replay-filter.max-old-writers");
             _replayDebugEnabled = config.GetBoolean("replay-filter.debug");
 
-            _resequencer = Context.System.ActorOf(Props.Create(() => new Resequencer()));
+            _resequencer = Context.ActorOf(Props.Create(() => new Resequencer()));
         }
 
         public abstract void ReplayMessages(
